@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DevOps Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f2f5;
+    --bg2: #ffffff;
+    --bg3: #f5f6f8;
+    --bg4: #eaecf0;
+    --border: #dde0e8;
+    --border2: #c8ccd6;
+    --text: #1a1d26;
+    --text2: #5a6078;
+    --text3: #9099b0;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --yellow: #b45309;
+    --yellow-bg: #fffbeb;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --orange: #ea580c;
+    --orange-bg: #fff7ed;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --teal: #0d9488;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.4; padding: 16px; min-height: 100vh; }
+  .section { margin-bottom: 16px; }
+  .section-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .section-label::before { content: ''; width: 3px; height: 3px; background: var(--text3); border-radius: 50%; }
+  .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .card-sm { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+
+  /* ===== ENVIRONMENT PULSE ===== */
+  .env-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .env-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .env-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .env-val { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .env-sub { font-size: 10px; color: var(--text2); margin-top: 3px; }
+  .env-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 0.5px solid #bbf7d0; }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 0.5px solid #fecaca; }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); border: 0.5px solid #fde68a; }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); border: 0.5px solid #bfdbfe; }
+  .badge-gray { background: var(--bg4); color: var(--text2); border: 0.5px solid var(--border2); }
+  .delta { font-size: 10px; display: flex; align-items: center; gap: 2px; margin-top: 3px; }
+  .delta.up { color: var(--green); }
+  .delta.down { color: var(--red); }
+  .delta.neutral { color: var(--text2); }
+
+  /* ===== GLOBAL PLATFORM HEALTH ===== */
+  .gph-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .gph-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .gph-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .gph-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gph-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); letter-spacing: 0.03em; }
+  .chart-wrap { position: relative; height: 120px; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .donut-num { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .donut-sub { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .divider { height: 0.5px; background: var(--border); margin: 8px 0; }
+  .metrics2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-sm { background: var(--bg3); border-radius: 6px; padding: 7px 9px; }
+  .metric-lbl { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); font-family: var(--mono); margin-bottom: 3px; }
+  .metric-val { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .alert-list { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+  .alert-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 7px; }
+  .alert-lbl { font-size: 11px; font-weight: 500; font-family: var(--mono); }
+  .alert-cnt { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+  .alert-bar-bg { height: 2px; border-radius: 2px; background: rgba(0,0,0,0.08); margin-top: 3px; }
+  .alert-bar { height: 2px; border-radius: 2px; }
+  .svc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .svc-box { background: var(--bg3); border-radius: 6px; padding: 7px 9px; }
+  .svc-lbl { font-size: 9px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+  .svc-val { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+  .uptime-bar-wrap { margin-top: 8px; }
+  .uptime-lbl { font-size: 9px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; letter-spacing: 0.06em; }
+  .uptime-bar { display: flex; gap: 1px; }
+  .uptime-seg { height: 5px; flex: 1; border-radius: 1px; }
+
+  /* ===== APP SERVERS ===== */
+  .srv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .srv-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; }
+  .srv-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); }
+  .srv-name { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); }
+  .srv-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); }
+  .srv-rows { display: flex; flex-direction: column; gap: 4px; }
+  .srv-row { display: flex; justify-content: space-between; align-items: center; }
+  .srv-row-lbl { font-size: 11px; color: var(--text2); }
+  .srv-row-val { font-family: var(--mono); font-size: 11px; color: var(--text); font-weight: 500; }
+  .srv-row-val.warn { color: var(--yellow); }
+  .srv-row-val.crit { color: var(--red); }
+  .srv-row-val.good { color: var(--green); }
+
+  /* ===== INVENTORY ===== */
+  .inv-grid { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
+  .inv-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .inv-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .inv-title-badge { font-size: 10px; color: var(--text2); font-weight: 400; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-lbl { font-size: 11px; color: var(--text2); width: 70px; flex-shrink: 0; }
+  .bar-bg { flex: 1; height: 4px; background: var(--bg4); border-radius: 2px; }
+  .bar-fill { height: 4px; border-radius: 2px; }
+  .bar-cnt { font-family: var(--mono); font-size: 11px; color: var(--text); width: 24px; text-align: right; flex-shrink: 0; }
+  .cert-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+  .cert-box { border-radius: 7px; padding: 8px; text-align: center; }
+  .cert-lbl { font-size: 9px; color: var(--text2); margin-bottom: 3px; font-family: var(--mono); }
+  .cert-val { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+  .db-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  .db-row:last-child { border-bottom: none; }
+  .db-name { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .db-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .db-count { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .migration-pct { font-size: 36px; font-weight: 700; font-family: var(--mono); color: var(--green); margin: 6px 0; }
+  .migr-sub { font-size: 11px; color: var(--text2); margin-bottom: 10px; }
+  .migr-rows { display: flex; flex-direction: column; gap: 5px; }
+  .migr-row { display: flex; align-items: center; gap: 6px; }
+  .migr-lbl { font-size: 11px; color: var(--text2); flex: 1; }
+  .migr-bar-bg { width: 80px; height: 4px; background: var(--bg4); border-radius: 2px; }
+  .migr-bar-fill { height: 4px; border-radius: 2px; }
+  .migr-cnt { font-family: var(--mono); font-size: 11px; color: var(--text); width: 16px; text-align: right; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* PULSE ANIMATION */
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+  .pulse-dot { display: inline-block; width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s ease-in-out infinite; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ===== SECTION 1: ENVIRONMENT PULSE ===== -->
+<div class="section">
+  <div class="section-label"><span class="pulse-dot"></span>Environment Pulse</div>
+  <div class="env-grid">
+    <div class="env-card">
+      <div class="env-label">Toplam Sunucu</div>
+      <div class="env-val">148</div>
+      <div class="env-sub" style="color:var(--text2);">97 Linux · 51 AIX</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Toplam Uygulama</div>
+      <div class="env-val">137</div>
+      <div class="env-sub">8 platform · 3 kategori</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Erişilebilirlik</div>
+      <div class="env-val" style="color:var(--green);">99.97%</div>
+      <div class="env-badge badge-green">▲ Stabil</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Request / SN</div>
+      <div class="env-val">4.572</div>
+      <div class="env-sub" style="color:var(--text2);">p95 247ms</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Aktif Problem</div>
+      <div class="env-val" style="color:var(--green);">0</div>
+      <div class="env-badge badge-green">Auto-healed: 8</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Hata Oranı</div>
+      <div class="env-val" style="color:var(--text2);">0.56%</div>
+      <div class="env-badge badge-gray">▲ Normal aralık</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 2: GLOBAL PLATFORM HEALTH ===== -->
+<div class="section">
+  <div class="section-label">Global Platform Health</div>
+  <div class="gph-grid">
+
+    <!-- Infrastructure Health -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#eff6ff;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><rect x="1" y="10" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><circle cx="12.5" cy="4" r="1" fill="#2563eb"/><circle cx="12.5" cy="12" r="1" fill="#2563eb"/></svg>
+        </div>
+        <span class="gph-title">Infrastructure Health</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">Sağlıklı</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-center">
+          <div class="donut-num">148</div>
+          <div class="donut-sub">sunucu</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Sağlıklı 128 · 87%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#facc15;"></div>Uyarı 14 · 9%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div>Kritik 6 · 4%</div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm">
+          <div class="metric-lbl">CPU Kullanımı</div>
+          <div class="metric-val" style="color:#4d82d6;">38%</div>
+        </div>
+        <div class="metric-sm">
+          <div class="metric-lbl">Bellek</div>
+          <div class="metric-val" style="color:#facc15;">54%</div>
+        </div>
+        <div class="metric-sm">
+          <div class="metric-lbl">Disk</div>
+          <div class="metric-val" style="color:#f97316;">62%</div>
+        </div>
+        <div class="metric-sm">
+          <div class="metric-lbl">Network</div>
+          <div class="metric-val">29%</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">Linux</div><div class="metric-val">97</div></div>
+        <div class="metric-sm"><div class="metric-lbl">AIX</div><div class="metric-val">51</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Küme</div><div class="metric-val">12</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Net.Err</div><div class="metric-val" style="color:var(--green);">0</div></div>
+      </div>
+    </div>
+
+    <!-- Application Health -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#f0fdf4;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><polyline points="1,12 4,7 7,9 10,5 13,8 15,4" stroke="#22c55e" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="gph-title">Uygulama Sağlığı</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">99.97%</span>
+      </div>
+      <div class="chart-wrap" style="height:110px;">
+        <canvas id="lineChart"></canvas>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">Erişilebilirlik</div><div class="metric-val" style="color:var(--green);">99.97%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Hata Oranı</div><div class="metric-val" style="color:var(--yellow);">0.56%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Apdex</div><div class="metric-val" style="color:var(--green);">0.97</div></div>
+        <div class="metric-sm"><div class="metric-lbl">p95 / p99</div><div class="metric-val">247ms</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">TPS</div><div class="metric-val" style="color:#4d82d6;">4.572</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Aktif Req</div><div class="metric-val">967</div></div>
+        <div class="metric-sm"><div class="metric-lbl">P50</div><div class="metric-val">142ms</div></div>
+        <div class="metric-sm"><div class="metric-lbl">P95</div><div class="metric-val">247ms</div></div>
+      </div>
+    </div>
+
+    <!-- Alert Summary -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#fef2f2;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2L14 13H2L8 2Z" stroke="#ef4444" stroke-width="1.2" fill="none" stroke-linejoin="round"/><line x1="8" y1="6.5" x2="8" y2="9.5" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.2" r="0.6" fill="#ef4444"/></svg>
+        </div>
+        <span class="gph-title">Alert Özeti</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">Stabil</span>
+      </div>
+      <div class="alert-list">
+        <div class="alert-row" style="background:#fef2f2;">
+          <div style="flex:1;">
+            <div class="alert-lbl" style="color:#dc2626;">Kritik</div>
+            <div class="alert-bar-bg"><div class="alert-bar" style="background:#dc2626;width:0%;"></div></div>
+          </div>
+          <div style="text-align:right; margin-left:10px;">
+            <div class="alert-cnt" style="color:#dc2626;">0</div>
+            <div style="font-size:9px; color:var(--text3);">aktif yok</div>
+          </div>
+        </div>
+        <div class="alert-row" style="background:#fff7ed;">
+          <div style="flex:1;">
+            <div class="alert-lbl" style="color:#ea580c;">Major</div>
+            <div class="alert-bar-bg"><div class="alert-bar" style="background:#ea580c;width:0%;"></div></div>
+          </div>
+          <div style="text-align:right; margin-left:10px;">
+            <div class="alert-cnt" style="color:#ea580c;">0</div>
+            <div style="font-size:9px; color:var(--text3);">aktif yok</div>
+          </div>
+        </div>
+        <div class="alert-row" style="background:#fffbeb;">
+          <div style="flex:1;">
+            <div class="alert-lbl" style="color:#b45309;">Uyarı</div>
+            <div class="alert-bar-bg"><div class="alert-bar" style="background:#b45309;width:0%;"></div></div>
+          </div>
+          <div style="text-align:right; margin-left:10px;">
+            <div class="alert-cnt" style="color:#b45309;">0</div>
+            <div style="font-size:9px; color:var(--text3);">aktif yok</div>
+          </div>
+        </div>
+        <div class="alert-row" style="background:#f0fdf4;">
+          <div style="flex:1;">
+            <div class="alert-lbl" style="color:#16a34a;">Auto-healed</div>
+            <div class="alert-bar-bg"><div class="alert-bar" style="background:#16a34a;width:100%;"></div></div>
+          </div>
+          <div style="text-align:right; margin-left:10px;">
+            <div class="alert-cnt" style="color:#16a34a;">8</div>
+            <div style="font-size:9px; color:var(--text3);">son 1 saat</div>
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="svc-grid">
+        <div class="svc-box">
+          <div class="svc-lbl">Sağlıklı SVC</div>
+          <div class="svc-val" style="color:var(--green);">41</div>
+        </div>
+        <div class="svc-box">
+          <div class="svc-lbl">Uyarı SVC</div>
+          <div class="svc-val" style="color:var(--yellow);">0</div>
+        </div>
+        <div class="svc-box">
+          <div class="svc-lbl">Küme</div>
+          <div class="svc-val">12</div>
+        </div>
+      </div>
+      <div class="svc-grid" style="margin-top:6px;">
+        <div class="svc-box" style="grid-column:span 2;">
+          <div class="svc-lbl">Kritik SVC</div>
+          <div class="svc-val" style="color:var(--red);">0</div>
+        </div>
+        <div class="svc-box">
+          <div class="svc-lbl">Küme</div>
+          <div class="svc-val">12</div>
+        </div>
+      </div>
+      <div class="uptime-bar-wrap" style="margin-top:8px;">
+        <div class="uptime-lbl">Son 24 saat uptime</div>
+        <div class="uptime-bar" id="uptimeBar"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SECTION 3: APP SERVERS ===== -->
+<div class="section">
+  <div class="section-label">Uygulama Sunucuları · İş Platformları</div>
+  <div class="srv-grid">
+
+    <!-- JBoss -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#fff7ed;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#ea580c;font-family:var(--mono);">JB</div>
+        <div>
+          <div class="srv-name">JBoss</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Middleware</div>
+        </div>
+        <div class="env-badge badge-yellow" style="margin-left:auto;">73%</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">JVM Heap</span><span class="srv-row-val warn">73%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Thread Count</span><span class="srv-row-val">312</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Busy Threads</span><span class="srv-row-val warn">11%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Request TPS</span><span class="srv-row-val">1.868</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Active Conns</span><span class="srv-row-val">0.88%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Deployments</span><span class="srv-row-val good">24</span></div>
+      </div>
+    </div>
+
+    <!-- Nginx -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#f0fdf4;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#16a34a;font-family:var(--mono);">NX</div>
+        <div>
+          <div class="srv-name">Nginx</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Middleware</div>
+        </div>
+        <div class="env-badge badge-green" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Req / sn</span><span class="srv-row-val">1.900</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Aktif Bağl</span><span class="srv-row-val">3.400</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">1xx Oranı</span><span class="srv-row-val">0.12%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">4xx Oranı</span><span class="srv-row-val warn">0.42%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Upstream H</span><span class="srv-row-val">38ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Worker Proc</span><span class="srv-row-val">8</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Upstream Fail</span><span class="srv-row-val good">3</span></div>
+      </div>
+    </div>
+
+    <!-- EVAM -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#eff6ff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#2563eb;font-family:var(--mono);">EV</div>
+        <div>
+          <div class="srv-name">EVAM</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Fraud</div>
+        </div>
+        <div class="env-badge badge-red" style="margin-left:auto;">Kritik</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">TPS</span><span class="srv-row-val">1.240</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Kuyruk Lat.</span><span class="srv-row-val crit">0.83%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Fraud Hesp</span><span class="srv-row-val crit">0.83%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Engine Err</span><span class="srv-row-val">0</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Queue Len.</span><span class="srv-row-val">4</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Queue Wait</span><span class="srv-row-val warn">2ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Timeout</span><span class="srv-row-val good">0%</span></div>
+      </div>
+    </div>
+
+    <!-- Provenir / PowerCurve -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#eff6ff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#2563eb;font-family:var(--mono);">PC</div>
+        <div>
+          <div class="srv-name">Provenir / PowerCurve</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Credit</div>
+        </div>
+        <div class="env-badge badge-blue" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Karar Hız</span><span class="srv-row-val good">880</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Karar Lat.</span><span class="srv-row-val">12ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Bağlantı</span><span class="srv-row-val">18ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">API Hit</span><span class="srv-row-val">24ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">API Hata</span><span class="srv-row-val good">0</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Scoring List</span><span class="srv-row-val">—</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Rule List</span><span class="srv-row-val">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 4: INVENTORY ===== -->
+<div class="section">
+  <div class="section-label">Envanter Özeti</div>
+  <div class="inv-grid">
+
+    <!-- App Inventory -->
+    <div class="inv-card">
+      <div class="inv-title">
+        Uygulama Envanteri
+        <span class="inv-title-badge env-badge badge-blue">137</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">JBoss</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#f97316;width:100%;"></div></div>
+        <span class="bar-cnt">34</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">Nginx</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#4d82d6;width:70%;"></div></div>
+        <span class="bar-cnt">24</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">WebSphere</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#a855f7;width:47%;"></div></div>
+        <span class="bar-cnt">16</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">OpenShift</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#22c55e;width:47%;"></div></div>
+        <span class="bar-cnt">16</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">Diğer</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#6b7280;width:109%;"></div></div>
+        <span class="bar-cnt">37</span>
+      </div>
+    </div>
+
+    <!-- Certificate Inventory -->
+    <div class="inv-card">
+      <div class="inv-title">
+        Sertifika Envanteri
+        <span class="inv-title-badge env-badge badge-gray">293 toplam</span>
+      </div>
+      <div class="cert-grid">
+        <div class="cert-box" style="background:#0a1f10;">
+          <div class="cert-lbl">Geçerli</div>
+          <div class="cert-val" style="color:var(--green);">178</div>
+          <div style="font-size:9px;color:#1a5c30;font-family:var(--mono);">30g</div>
+        </div>
+        <div class="cert-box" style="background:#1a1800;">
+          <div class="cert-lbl">Dolmuş</div>
+          <div class="cert-val" style="color:var(--yellow);">24</div>
+        </div>
+        <div class="cert-box" style="background:#1a1800;">
+          <div class="cert-lbl">Oracle</div>
+          <div class="cert-val" style="color:var(--yellow);">43</div>
+        </div>
+        <div class="cert-box" style="background:#0a1f10;">
+          <div class="cert-lbl">Spring</div>
+          <div class="cert-val" style="color:var(--green);">22</div>
+        </div>
+        <div class="cert-box" style="background:#0a1428;">
+          <div class="cert-lbl">Cloud</div>
+          <div class="cert-val" style="color:#4d82d6;">14</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Datasource (90 UI)</div>
+      <div class="db-row">
+        <div class="db-name"><div class="db-dot" style="background:#f97316;"></div>Oracle DB</div>
+        <div class="db-count" style="color:#f97316;">42</div>
+      </div>
+      <div class="db-row">
+        <div class="db-name"><div class="db-dot" style="background:#336791;"></div>PostgreSQL</div>
+        <div class="db-count" style="color:#4d82d6;">24</div>
+      </div>
+      <div class="db-row">
+        <div class="db-name"><div class="db-dot" style="background:#cc2927;"></div>MSSQL</div>
+        <div class="db-count" style="color:var(--red);">8</div>
+      </div>
+    </div>
+
+    <!-- JBoss Migration -->
+    <div class="inv-card">
+      <div class="inv-title">
+        JBoss 8 Migration
+        <span class="inv-title-badge env-badge badge-gray">34 instance</span>
+      </div>
+      <div class="migration-pct">62%</div>
+      <div class="migr-sub">migration tamamlandı</div>
+      <div class="divider"></div>
+      <div class="migr-rows">
+        <div class="migr-row">
+          <span class="migr-lbl">Tamamlandı</span>
+          <div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#22c55e;width:62%;"></div></div>
+          <span class="migr-cnt" style="color:var(--green);">13</span>
+        </div>
+        <div class="migr-row">
+          <span class="migr-lbl">Q1 Planlı</span>
+          <div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#4d82d6;width:43%;"></div></div>
+          <span class="migr-cnt" style="color:#4d82d6;">9</span>
+        </div>
+        <div class="migr-row">
+          <span class="migr-lbl">Q2 Planlı</span>
+          <div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#a855f7;width:29%;"></div></div>
+          <span class="migr-cnt" style="color:#a855f7;">6</span>
+        </div>
+        <div class="migr-row">
+          <span class="migr-lbl">Q3 Planlı</span>
+          <div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#f97316;width:14%;"></div></div>
+          <span class="migr-cnt" style="color:#f97316;">3</span>
+        </div>
+        <div class="migr-row">
+          <span class="migr-lbl">Tamamlanmadı</span>
+          <div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#ef4444;width:14%;"></div></div>
+          <span class="migr-cnt" style="color:var(--red);">3</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Donut Chart
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [128, 14, 6],
+      backgroundColor: ['#22c55e','#facc15','#ef4444'],
+      borderWidth: 0,
+      hoverOffset: 3,
+      borderRadius: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#0d1018', borderColor: '#1e2535', borderWidth: 1,
+      titleColor: '#7a8099', bodyColor: '#c8cdd8',
+      callbacks: { label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.parsed; } }
+    }},
+    animation: { animateRotate: true, duration: 900 }
+  }
+});
+
+// Line Chart
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: ['10:00','10:05','10:10','10:15','10:20','10:25','10:30'],
+    datasets: [{
+      data: [210, 195, 240, 215, 255, 230, 247],
+      borderColor: '#22c55e',
+      borderWidth: 1.5,
+      pointRadius: 2,
+      pointBackgroundColor: '#22c55e',
+      fill: true,
+      backgroundColor: 'rgba(34,197,94,0.06)',
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#0d1018', borderColor: '#1e2535', borderWidth: 1,
+      titleColor: '#7a8099', bodyColor: '#c8cdd8',
+      callbacks: { label: function(ctx) { return ' ' + ctx.parsed.y + 'ms'; } }
+    }},
+    scales: {
+      x: { ticks: { color: '#4a5068', font: { size: 9, family: "'JetBrains Mono'" } }, grid: { color: '#161b28' } },
+      y: { ticks: { color: '#4a5068', font: { size: 9, family: "'JetBrains Mono'" }, callback: v => v + 'ms' }, grid: { color: '#161b28' }, min: 150, max: 300 }
+    }
+  }
+});
+
+// Uptime bar
+(function() {
+  var bar = document.getElementById('uptimeBar');
+  if (!bar) return;
+  for (var i = 0; i < 48; i++) {
+    var seg = document.createElement('div');
+    seg.className = 'uptime-seg';
+    var r = Math.random();
+    seg.style.background = r > 0.95 ? '#facc15' : r > 0.99 ? '#ef4444' : '#22c55e';
+    seg.style.opacity = r > 0.95 ? '0.9' : '0.6';
+    bar.appendChild(seg);
+  }
+})();
+</script>
+</body>
+</html>

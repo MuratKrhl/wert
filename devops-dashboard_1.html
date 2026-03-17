@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DevOps Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f2f5;
+    --bg2: #ffffff;
+    --bg3: #f5f6f8;
+    --bg4: #eaecf0;
+    --border: #dde0e8;
+    --border2: #c8ccd6;
+    --text: #1a1d26;
+    --text2: #5a6078;
+    --text3: #9099b0;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --yellow: #b45309;
+    --yellow-bg: #fffbeb;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --orange: #ea580c;
+    --orange-bg: #fff7ed;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --purple: #7c3aed;
+    --purple-bg: #f5f3ff;
+    --teal: #0d9488;
+    --teal-bg: #f0fdfa;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.4; padding: 16px; min-height: 100vh; }
+  .section { margin-bottom: 16px; }
+  .section-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .section-label::before { content: ''; width: 3px; height: 3px; background: var(--text3); border-radius: 50%; }
+  .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .card-sm { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+
+  /* ===== ENVIRONMENT PULSE ===== */
+  .env-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .env-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .env-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .env-val { font-size: 22px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .env-sub { font-size: 10px; color: var(--text2); margin-top: 3px; }
+  .env-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
+  .badge-green { background: var(--green-bg); color: var(--green); border: 0.5px solid #bbf7d0; }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 0.5px solid #fecaca; }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); border: 0.5px solid #fde68a; }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); border: 0.5px solid #bfdbfe; }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); border: 0.5px solid #ddd6fe; }
+  .badge-teal { background: var(--teal-bg); color: var(--teal); border: 0.5px solid #99f6e4; }
+  .badge-gray { background: var(--bg4); color: var(--text2); border: 0.5px solid var(--border2); }
+  .delta { font-size: 10px; display: flex; align-items: center; gap: 2px; margin-top: 3px; }
+  .delta.up { color: var(--green); }
+  .delta.down { color: var(--red); }
+  .delta.neutral { color: var(--text2); }
+
+  /* ===== GLOBAL PLATFORM HEALTH ===== */
+  .gph-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .gph-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .gph-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .gph-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gph-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); letter-spacing: 0.03em; }
+  .chart-wrap { position: relative; height: 120px; }
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .donut-num { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .donut-sub { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text2); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .divider { height: 0.5px; background: var(--border); margin: 8px 0; }
+  .metrics2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-sm { background: var(--bg3); border-radius: 6px; padding: 7px 9px; }
+  .metric-lbl { font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); font-family: var(--mono); margin-bottom: 3px; }
+  .metric-val { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .alert-list { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+  .alert-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 7px; }
+  .alert-lbl { font-size: 11px; font-weight: 500; font-family: var(--mono); }
+  .alert-cnt { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+  .alert-bar-bg { height: 2px; border-radius: 2px; background: rgba(0,0,0,0.08); margin-top: 3px; }
+  .alert-bar { height: 2px; border-radius: 2px; }
+  .svc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .svc-box { background: var(--bg3); border-radius: 6px; padding: 7px 9px; }
+  .svc-lbl { font-size: 9px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+  .svc-val { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+  .uptime-bar-wrap { margin-top: 8px; }
+  .uptime-lbl { font-size: 9px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; letter-spacing: 0.06em; }
+  .uptime-bar { display: flex; gap: 1px; }
+  .uptime-seg { height: 5px; flex: 1; border-radius: 1px; }
+
+  /* ===== APP SERVERS ===== */
+  .srv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .srv-grid-ext { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .srv-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; }
+  .srv-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); }
+  .srv-name { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); }
+  .srv-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); }
+  .srv-rows { display: flex; flex-direction: column; gap: 4px; }
+  .srv-row { display: flex; justify-content: space-between; align-items: center; }
+  .srv-row-lbl { font-size: 11px; color: var(--text2); }
+  .srv-row-val { font-family: var(--mono); font-size: 11px; color: var(--text); font-weight: 500; }
+  .srv-row-val.warn { color: var(--yellow); }
+  .srv-row-val.crit { color: var(--red); }
+  .srv-row-val.good { color: var(--green); }
+  .srv-row-val.blue { color: var(--blue); }
+  .srv-row-val.purple { color: var(--purple); }
+  .srv-row-val.teal { color: var(--teal); }
+
+  /* ===== MINI SPARKLINE ===== */
+  .mini-spark { height: 28px; margin: 6px 0; }
+
+  /* ===== INVENTORY ===== */
+  .inv-grid { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
+  .inv-grid-ext { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .inv-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .inv-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .inv-title-badge { font-size: 10px; color: var(--text2); font-weight: 400; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-lbl { font-size: 11px; color: var(--text2); width: 70px; flex-shrink: 0; }
+  .bar-bg { flex: 1; height: 4px; background: var(--bg4); border-radius: 2px; }
+  .bar-fill { height: 4px; border-radius: 2px; }
+  .bar-cnt { font-family: var(--mono); font-size: 11px; color: var(--text); width: 24px; text-align: right; flex-shrink: 0; }
+  .cert-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+  .cert-box { border-radius: 7px; padding: 8px; text-align: center; }
+  .cert-lbl { font-size: 9px; color: var(--text2); margin-bottom: 3px; font-family: var(--mono); }
+  .cert-val { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+  .db-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  .db-row:last-child { border-bottom: none; }
+  .db-name { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .db-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .db-count { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .migration-pct { font-size: 36px; font-weight: 700; font-family: var(--mono); color: var(--green); margin: 6px 0; }
+  .migr-sub { font-size: 11px; color: var(--text2); margin-bottom: 10px; }
+  .migr-rows { display: flex; flex-direction: column; gap: 5px; }
+  .migr-row { display: flex; align-items: center; gap: 6px; }
+  .migr-lbl { font-size: 11px; color: var(--text2); flex: 1; }
+  .migr-bar-bg { width: 80px; height: 4px; background: var(--bg4); border-radius: 2px; }
+  .migr-bar-fill { height: 4px; border-radius: 2px; }
+  .migr-cnt { font-family: var(--mono); font-size: 11px; color: var(--text); width: 16px; text-align: right; }
+
+  /* ===== OPENSHIFT POD GRID ===== */
+  .pod-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 6px 0; }
+  .pod-dot { width: 100%; aspect-ratio: 1; border-radius: 3px; }
+
+  /* ===== DS POOL METER ===== */
+  .pool-meter { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
+  .pool-seg { flex: 1; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ===== PULSE ANIMATION ===== */
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+  .pulse-dot { display: inline-block; width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s ease-in-out infinite; margin-right: 4px; }
+
+  /* ===== INV STAT GRID ===== */
+  .inv-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+  .inv-stat-box { background: var(--bg3); border-radius: 6px; padding: 8px 10px; }
+  .inv-stat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); font-family: var(--mono); margin-bottom: 3px; }
+  .inv-stat-val { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+  .inv-stat-sub { font-size: 9px; color: var(--text3); font-family: var(--mono); margin-top: 1px; }
+
+  /* Section divider line */
+  .section-divider { height: 0.5px; background: var(--border); margin: 12px 0 8px; }
+
+  /* Platform tag color strips */
+  .strip-os { border-left: 3px solid #ee0000; }
+  .strip-ws { border-left: 3px solid #054ada; }
+  .strip-wy { border-left: 3px solid #0d9488; }
+  .strip-lo { border-left: 3px solid #7c3aed; }
+  .strip-ds { border-left: 3px solid #f97316; }
+</style>
+</head>
+<body>
+
+<!-- ===== SECTION 1: ENVIRONMENT PULSE ===== -->
+<div class="section">
+  <div class="section-label"><span class="pulse-dot"></span>Environment Pulse</div>
+  <div class="env-grid">
+    <div class="env-card">
+      <div class="env-label">Toplam Sunucu</div>
+      <div class="env-val">148</div>
+      <div class="env-sub">97 Linux · 51 AIX</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Toplam Uygulama</div>
+      <div class="env-val">137</div>
+      <div class="env-sub">8 platform · 3 kategori</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Erişilebilirlik</div>
+      <div class="env-val" style="color:var(--green);">99.97%</div>
+      <div class="env-badge badge-green">▲ Stabil</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Request / SN</div>
+      <div class="env-val">4.572</div>
+      <div class="env-sub">p95 247ms</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Aktif Problem</div>
+      <div class="env-val" style="color:var(--green);">0</div>
+      <div class="env-badge badge-green">Auto-healed: 8</div>
+    </div>
+    <div class="env-card">
+      <div class="env-label">Hata Oranı</div>
+      <div class="env-val" style="color:var(--text2);">0.56%</div>
+      <div class="env-badge badge-gray">▲ Normal aralık</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 2: GLOBAL PLATFORM HEALTH ===== -->
+<div class="section">
+  <div class="section-label">Global Platform Health</div>
+  <div class="gph-grid">
+
+    <!-- Infrastructure Health -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#eff6ff;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><rect x="1" y="10" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><circle cx="12.5" cy="4" r="1" fill="#2563eb"/><circle cx="12.5" cy="12" r="1" fill="#2563eb"/></svg>
+        </div>
+        <span class="gph-title">Infrastructure Health</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">Sağlıklı</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-center">
+          <div class="donut-num">148</div>
+          <div class="donut-sub">sunucu</div>
+        </div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>Sağlıklı 128 · 87%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#facc15;"></div>Uyarı 14 · 9%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div>Kritik 6 · 4%</div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">CPU Kullanımı</div><div class="metric-val" style="color:#4d82d6;">38%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Bellek</div><div class="metric-val" style="color:#facc15;">54%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Disk</div><div class="metric-val" style="color:#f97316;">62%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Network</div><div class="metric-val">29%</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">Linux</div><div class="metric-val">97</div></div>
+        <div class="metric-sm"><div class="metric-lbl">AIX</div><div class="metric-val">51</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Küme</div><div class="metric-val">12</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Net.Err</div><div class="metric-val" style="color:var(--green);">0</div></div>
+      </div>
+    </div>
+
+    <!-- Application Health -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#f0fdf4;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><polyline points="1,12 4,7 7,9 10,5 13,8 15,4" stroke="#22c55e" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <span class="gph-title">Uygulama Sağlığı</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">99.97%</span>
+      </div>
+      <div class="chart-wrap" style="height:110px;">
+        <canvas id="lineChart"></canvas>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">Erişilebilirlik</div><div class="metric-val" style="color:var(--green);">99.97%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Hata Oranı</div><div class="metric-val" style="color:var(--yellow);">0.56%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Apdex</div><div class="metric-val" style="color:var(--green);">0.97</div></div>
+        <div class="metric-sm"><div class="metric-lbl">p95 / p99</div><div class="metric-val">247ms</div></div>
+      </div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">TPS</div><div class="metric-val" style="color:#4d82d6;">4.572</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Aktif Req</div><div class="metric-val">967</div></div>
+        <div class="metric-sm"><div class="metric-lbl">P50</div><div class="metric-val">142ms</div></div>
+        <div class="metric-sm"><div class="metric-lbl">P95</div><div class="metric-val">247ms</div></div>
+      </div>
+    </div>
+
+    <!-- Alert Summary -->
+    <div class="gph-card">
+      <div class="gph-header">
+        <div class="gph-icon" style="background:#fef2f2;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2L14 13H2L8 2Z" stroke="#ef4444" stroke-width="1.2" fill="none" stroke-linejoin="round"/><line x1="8" y1="6.5" x2="8" y2="9.5" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.2" r="0.6" fill="#ef4444"/></svg>
+        </div>
+        <span class="gph-title">Alert Özeti</span>
+        <span class="env-badge badge-green" style="margin-left:auto;">Stabil</span>
+      </div>
+      <div class="alert-list">
+        <div class="alert-row" style="background:#fef2f2;">
+          <div style="flex:1;"><div class="alert-lbl" style="color:#dc2626;">Kritik</div><div class="alert-bar-bg"><div class="alert-bar" style="background:#dc2626;width:0%;"></div></div></div>
+          <div style="text-align:right; margin-left:10px;"><div class="alert-cnt" style="color:#dc2626;">0</div><div style="font-size:9px; color:var(--text3);">aktif yok</div></div>
+        </div>
+        <div class="alert-row" style="background:#fff7ed;">
+          <div style="flex:1;"><div class="alert-lbl" style="color:#ea580c;">Major</div><div class="alert-bar-bg"><div class="alert-bar" style="background:#ea580c;width:0%;"></div></div></div>
+          <div style="text-align:right; margin-left:10px;"><div class="alert-cnt" style="color:#ea580c;">0</div><div style="font-size:9px; color:var(--text3);">aktif yok</div></div>
+        </div>
+        <div class="alert-row" style="background:#fffbeb;">
+          <div style="flex:1;"><div class="alert-lbl" style="color:#b45309;">Uyarı</div><div class="alert-bar-bg"><div class="alert-bar" style="background:#b45309;width:0%;"></div></div></div>
+          <div style="text-align:right; margin-left:10px;"><div class="alert-cnt" style="color:#b45309;">0</div><div style="font-size:9px; color:var(--text3);">aktif yok</div></div>
+        </div>
+        <div class="alert-row" style="background:#f0fdf4;">
+          <div style="flex:1;"><div class="alert-lbl" style="color:#16a34a;">Auto-healed</div><div class="alert-bar-bg"><div class="alert-bar" style="background:#16a34a;width:100%;"></div></div></div>
+          <div style="text-align:right; margin-left:10px;"><div class="alert-cnt" style="color:#16a34a;">8</div><div style="font-size:9px; color:var(--text3);">son 1 saat</div></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="svc-grid">
+        <div class="svc-box"><div class="svc-lbl">Sağlıklı SVC</div><div class="svc-val" style="color:var(--green);">41</div></div>
+        <div class="svc-box"><div class="svc-lbl">Uyarı SVC</div><div class="svc-val" style="color:var(--yellow);">0</div></div>
+        <div class="svc-box"><div class="svc-lbl">Küme</div><div class="svc-val">12</div></div>
+      </div>
+      <div class="svc-grid" style="margin-top:6px;">
+        <div class="svc-box" style="grid-column:span 2;"><div class="svc-lbl">Kritik SVC</div><div class="svc-val" style="color:var(--red);">0</div></div>
+        <div class="svc-box"><div class="svc-lbl">Küme</div><div class="svc-val">12</div></div>
+      </div>
+      <div class="uptime-bar-wrap" style="margin-top:8px;">
+        <div class="uptime-lbl">Son 24 saat uptime</div>
+        <div class="uptime-bar" id="uptimeBar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 3: APP SERVERS – Row 1 ===== -->
+<div class="section">
+  <div class="section-label">Uygulama Sunucuları · İş Platformları</div>
+  <div class="srv-grid">
+
+    <!-- JBoss -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#fff7ed;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#ea580c;font-family:var(--mono);">JB</div>
+        <div><div class="srv-name">JBoss</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Middleware</div></div>
+        <div class="env-badge badge-yellow" style="margin-left:auto;">73%</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">JVM Heap</span><span class="srv-row-val warn">73%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Thread Count</span><span class="srv-row-val">312</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Busy Threads</span><span class="srv-row-val warn">11%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Request TPS</span><span class="srv-row-val">1.868</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Active Conns</span><span class="srv-row-val">0.88%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Deployments</span><span class="srv-row-val good">24</span></div>
+      </div>
+    </div>
+
+    <!-- Nginx -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#f0fdf4;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#16a34a;font-family:var(--mono);">NX</div>
+        <div><div class="srv-name">Nginx</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Middleware</div></div>
+        <div class="env-badge badge-green" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Req / sn</span><span class="srv-row-val">1.900</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Aktif Bağl</span><span class="srv-row-val">3.400</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">1xx Oranı</span><span class="srv-row-val">0.12%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">4xx Oranı</span><span class="srv-row-val warn">0.42%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Upstream H</span><span class="srv-row-val">38ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Worker Proc</span><span class="srv-row-val">8</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Upstream Fail</span><span class="srv-row-val good">3</span></div>
+      </div>
+    </div>
+
+    <!-- EVAM -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#eff6ff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#2563eb;font-family:var(--mono);">EV</div>
+        <div><div class="srv-name">EVAM</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Fraud</div></div>
+        <div class="env-badge badge-red" style="margin-left:auto;">Kritik</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">TPS</span><span class="srv-row-val">1.240</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Kuyruk Lat.</span><span class="srv-row-val crit">0.83%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Fraud Hesp</span><span class="srv-row-val crit">0.83%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Engine Err</span><span class="srv-row-val">0</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Queue Len.</span><span class="srv-row-val">4</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Queue Wait</span><span class="srv-row-val warn">2ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Timeout</span><span class="srv-row-val good">0%</span></div>
+      </div>
+    </div>
+
+    <!-- Provenir / PowerCurve -->
+    <div class="srv-card">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#eff6ff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#2563eb;font-family:var(--mono);">PC</div>
+        <div><div class="srv-name">Provenir / PowerCurve</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Credit</div></div>
+        <div class="env-badge badge-blue" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Karar Hız</span><span class="srv-row-val good">880</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Karar Lat.</span><span class="srv-row-val">12ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Bağlantı</span><span class="srv-row-val">18ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">API Hit</span><span class="srv-row-val">24ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">API Hata</span><span class="srv-row-val good">0</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Scoring List</span><span class="srv-row-val">—</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Rule List</span><span class="srv-row-val">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== APP SERVERS – Row 2 (NEW PLATFORMS) ===== -->
+  <div class="srv-grid-ext" style="margin-top:8px;">
+
+    <!-- OpenShift -->
+    <div class="srv-card strip-os" style="border-left-width:3px;">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#fef2f2;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#dc2626;font-family:var(--mono);">OS</div>
+        <div><div class="srv-name">OpenShift</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Container</div></div>
+        <div class="env-badge badge-green" style="margin-left:auto;">OK</div>
+      </div>
+      <!-- Nested donut: outer=namespace, inner=pod status -->
+      <div style="position:relative;height:130px;margin-bottom:6px;">
+        <canvas id="osNestedDonut"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1;">188</div>
+          <div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-top:1px;">pods</div>
+        </div>
+      </div>
+      <!-- Legend row: namespace (outer) -->
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#dc2626;"></div>prod·72</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#f97316;"></div>stg·48</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#4d82d6;"></div>dev·38</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#6b7280;"></div>mon·18</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#7c3aed;"></div>infra·12</div>
+      </div>
+      <!-- Legend row: pod status (inner) -->
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#22c55e;opacity:.8;"></div>Running·184</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#facc15;opacity:.8;"></div>Pending·3</div>
+        <div class="legend-item" style="font-size:9px;"><div class="legend-dot" style="background:#ef4444;opacity:.8;"></div>Failed·1</div>
+      </div>
+      <div class="divider" style="margin:4px 0;"></div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Pod Restarts</span><span class="srv-row-val warn">7</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Namespaces</span><span class="srv-row-val">16</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">CPU Request</span><span class="srv-row-val">61%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Mem Request</span><span class="srv-row-val warn">78%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Node Count</span><span class="srv-row-val blue">12</span></div>
+      </div>
+    </div>
+
+    <!-- WebSphere -->
+    <div class="srv-card strip-ws" style="border-left-width:3px;">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#eff6ff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#054ada;font-family:var(--mono);">WS</div>
+        <div><div class="srv-name">WebSphere</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Middleware</div></div>
+        <div class="env-badge badge-yellow" style="margin-left:auto;">Uyarı</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">JVM Heap</span><span class="srv-row-val warn">68%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Thread Pool</span><span class="srv-row-val warn">82 / 100</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Active Sess</span><span class="srv-row-val">1.204</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Request TPS</span><span class="srv-row-val">640</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Resp Time</span><span class="srv-row-val">56ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Deployed App</span><span class="srv-row-val good">16</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">GC Pause</span><span class="srv-row-val warn">34ms</span></div>
+      </div>
+    </div>
+
+    <!-- Wyden -->
+    <div class="srv-card strip-wy" style="border-left-width:3px;">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:var(--teal-bg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--teal);font-family:var(--mono);">WY</div>
+        <div><div class="srv-name">Wyden</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Core Banking</div></div>
+        <div class="env-badge badge-teal" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">TPS</span><span class="srv-row-val teal">2.310</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Latency P95</span><span class="srv-row-val">88ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Active Sess</span><span class="srv-row-val">3.740</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Hata Oranı</span><span class="srv-row-val good">0.03%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Queue Depth</span><span class="srv-row-val">12</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Batch Jobs</span><span class="srv-row-val teal">4 aktif</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Uptime</span><span class="srv-row-val good">99.99%</span></div>
+      </div>
+    </div>
+
+    <!-- LinuxOne -->
+    <div class="srv-card strip-lo" style="border-left-width:3px;">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:var(--purple-bg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--purple);font-family:var(--mono);">L1</div>
+        <div><div class="srv-name">LinuxOne</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Mainframe</div></div>
+        <div class="env-badge badge-green" style="margin-left:auto;">OK</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">CPU LPAR</span><span class="srv-row-val">42%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Mem Util</span><span class="srv-row-val warn">71%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">I/O Wait</span><span class="srv-row-val good">1.2%</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">LPAR Aktif</span><span class="srv-row-val purple">8 / 8</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">MIPS Used</span><span class="srv-row-val">3.840</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Workload</span><span class="srv-row-val">OLTP+Batch</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Net Thrghpt</span><span class="srv-row-val">14 Gbps</span></div>
+      </div>
+    </div>
+
+    <!-- DataSource -->
+    <div class="srv-card strip-ds" style="border-left-width:3px;">
+      <div class="srv-header">
+        <div style="width:20px;height:20px;background:#fff7ed;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#ea580c;font-family:var(--mono);">DS</div>
+        <div><div class="srv-name">DataSource</div><div style="font-size:9px;color:var(--text3);font-family:var(--mono);">Conn. Pool</div></div>
+        <div class="env-badge badge-green" style="margin-left:auto;">OK</div>
+      </div>
+      <!-- Pool utilization bar -->
+      <div style="margin-bottom:6px;">
+        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">POOL KULLANIMI</div>
+        <div class="pool-meter" id="poolMeter"></div>
+        <div style="font-size:9px;color:var(--text2);font-family:var(--mono);">74 / 90 aktif bağlantı</div>
+      </div>
+      <div class="srv-rows">
+        <div class="srv-row"><span class="srv-row-lbl">Aktif Conn</span><span class="srv-row-val warn">74 / 90</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Avg Query</span><span class="srv-row-val">9ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Slow Query</span><span class="srv-row-val warn">3</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Conn Fail</span><span class="srv-row-val good">0</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Wait Time</span><span class="srv-row-val">0.4ms</span></div>
+        <div class="srv-row"><span class="srv-row-lbl">Datasource</span><span class="srv-row-val">90 UI</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== SECTION 4: INVENTORY ===== -->
+<div class="section">
+  <div class="section-label">Envanter Özeti</div>
+  <!-- Row 1: Original 3 cards -->
+  <div class="inv-grid">
+
+    <!-- App Inventory -->
+    <div class="inv-card">
+      <div class="inv-title">Uygulama Envanteri <span class="inv-title-badge env-badge badge-blue">137</span></div>
+      <div class="bar-row">
+        <span class="bar-lbl">JBoss</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#f97316;width:100%;"></div></div>
+        <span class="bar-cnt">34</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">Nginx</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#4d82d6;width:70%;"></div></div>
+        <span class="bar-cnt">24</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">WebSphere</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#054ada;width:47%;"></div></div>
+        <span class="bar-cnt">16</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">OpenShift</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#dc2626;width:47%;"></div></div>
+        <span class="bar-cnt">16</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">Wyden</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#0d9488;width:18%;"></div></div>
+        <span class="bar-cnt">6</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">LinuxOne</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#7c3aed;width:24%;"></div></div>
+        <span class="bar-cnt">8</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-lbl">Diğer</span>
+        <div class="bar-bg"><div class="bar-fill" style="background:#6b7280;width:97%;"></div></div>
+        <span class="bar-cnt">33</span>
+      </div>
+    </div>
+
+    <!-- Certificate Inventory -->
+    <div class="inv-card">
+      <div class="inv-title">Sertifika Envanteri <span class="inv-title-badge env-badge badge-gray">293 toplam</span></div>
+      <div class="cert-grid">
+        <div class="cert-box" style="background:#0a1f10;"><div class="cert-lbl">Geçerli</div><div class="cert-val" style="color:var(--green);">178</div><div style="font-size:9px;color:#1a5c30;font-family:var(--mono);">30g</div></div>
+        <div class="cert-box" style="background:#1a1800;"><div class="cert-lbl">Dolmuş</div><div class="cert-val" style="color:var(--yellow);">24</div></div>
+        <div class="cert-box" style="background:#1a1800;"><div class="cert-lbl">Oracle</div><div class="cert-val" style="color:var(--yellow);">43</div></div>
+        <div class="cert-box" style="background:#0a1f10;"><div class="cert-lbl">Spring</div><div class="cert-val" style="color:var(--green);">22</div></div>
+        <div class="cert-box" style="background:#0a1428;"><div class="cert-lbl">Cloud</div><div class="cert-val" style="color:#4d82d6;">14</div></div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Datasource (90 UI)</div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#f97316;"></div>Oracle DB</div><div class="db-count" style="color:#f97316;">42</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#336791;"></div>PostgreSQL</div><div class="db-count" style="color:#4d82d6;">24</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#cc2927;"></div>MSSQL</div><div class="db-count" style="color:var(--red);">8</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#0d9488;"></div>Sybase</div><div class="db-count" style="color:var(--teal);">10</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#7c3aed;"></div>DB2</div><div class="db-count" style="color:var(--purple);">6</div></div>
+    </div>
+
+    <!-- JBoss Migration -->
+    <div class="inv-card">
+      <div class="inv-title">JBoss 8 Migration <span class="inv-title-badge env-badge badge-gray">34 instance</span></div>
+      <div class="migration-pct">62%</div>
+      <div class="migr-sub">migration tamamlandı</div>
+      <div class="divider"></div>
+      <div class="migr-rows">
+        <div class="migr-row"><span class="migr-lbl">Tamamlandı</span><div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#22c55e;width:62%;"></div></div><span class="migr-cnt" style="color:var(--green);">13</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q1 Planlı</span><div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#4d82d6;width:43%;"></div></div><span class="migr-cnt" style="color:#4d82d6;">9</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q2 Planlı</span><div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#a855f7;width:29%;"></div></div><span class="migr-cnt" style="color:#a855f7;">6</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q3 Planlı</span><div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#f97316;width:14%;"></div></div><span class="migr-cnt" style="color:#f97316;">3</span></div>
+        <div class="migr-row"><span class="migr-lbl">Tamamlanmadı</span><div class="migr-bar-bg"><div class="migr-bar-fill" style="background:#ef4444;width:14%;"></div></div><span class="migr-cnt" style="color:var(--red);">3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: NEW — OpenShift + DataSource Inventory -->
+  <div class="inv-grid-ext">
+
+    <!-- OpenShift Inventory -->
+    <div class="inv-card strip-os" style="border-left-width:3px;">
+      <div class="inv-title">
+        OpenShift Cluster Envanteri
+        <span class="inv-title-badge env-badge badge-red">16 uygulama</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">CLUSTER</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:#dc2626;">3</div>
+          <div style="font-size:9px;color:var(--text3);">aktif</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">NODES</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);">12</div>
+          <div style="font-size:9px;color:var(--text3);">worker</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">PODS</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--green);">184</div>
+          <div style="font-size:9px;color:var(--text3);">/ 188</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Namespace Dağılımı</div>
+      <div class="bar-row"><span class="bar-lbl">production</span><div class="bar-bg"><div class="bar-fill" style="background:#dc2626;width:60%;"></div></div><span class="bar-cnt">6</span></div>
+      <div class="bar-row"><span class="bar-lbl">staging</span><div class="bar-bg"><div class="bar-fill" style="background:#f97316;width:40%;"></div></div><span class="bar-cnt">4</span></div>
+      <div class="bar-row"><span class="bar-lbl">dev</span><div class="bar-bg"><div class="bar-fill" style="background:#4d82d6;width:30%;"></div></div><span class="bar-cnt">3</span></div>
+      <div class="bar-row"><span class="bar-lbl">monitoring</span><div class="bar-bg"><div class="bar-fill" style="background:#6b7280;width:20%;"></div></div><span class="bar-cnt">2</span></div>
+      <div class="bar-row"><span class="bar-lbl">infra</span><div class="bar-bg"><div class="bar-fill" style="background:#7c3aed;width:10%;"></div></div><span class="bar-cnt">1</span></div>
+      <div class="divider"></div>
+      <div class="metrics2">
+        <div class="metric-sm"><div class="metric-lbl">CPU Alloc</div><div class="metric-val" style="color:#dc2626;">61%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Mem Alloc</div><div class="metric-val" style="color:var(--yellow);">78%</div></div>
+        <div class="metric-sm"><div class="metric-lbl">PV Count</div><div class="metric-val">28</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Services</div><div class="metric-val">47</div></div>
+      </div>
+    </div>
+
+    <!-- DataSource Inventory -->
+    <div class="inv-card strip-ds" style="border-left-width:3px;">
+      <div class="inv-title">
+        DataSource Envanteri
+        <span class="inv-title-badge env-badge badge-gray">90 UI</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">TOPLAM</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);">90</div>
+          <div style="font-size:9px;color:var(--text3);">kayıt</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">AKTİF</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--green);">74</div>
+          <div style="font-size:9px;color:var(--text3);">bağlı</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">UYARI</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--yellow);">13</div>
+          <div style="font-size:9px;color:var(--text3);">yakın dolu</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px;">KRİTİK</div>
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--red);">3</div>
+          <div style="font-size:9px;color:var(--text3);">dolu</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">DB Tipi Dağılımı</div>
+          <div class="bar-row"><span class="bar-lbl">Oracle</span><div class="bar-bg"><div class="bar-fill" style="background:#f97316;width:93%;"></div></div><span class="bar-cnt">42</span></div>
+          <div class="bar-row"><span class="bar-lbl">PostgreSQL</span><div class="bar-bg"><div class="bar-fill" style="background:#336791;width:53%;"></div></div><span class="bar-cnt">24</span></div>
+          <div class="bar-row"><span class="bar-lbl">MSSQL</span><div class="bar-bg"><div class="bar-fill" style="background:#cc2927;width:18%;"></div></div><span class="bar-cnt">8</span></div>
+          <div class="bar-row"><span class="bar-lbl">Sybase</span><div class="bar-bg"><div class="bar-fill" style="background:#0d9488;width:22%;"></div></div><span class="bar-cnt">10</span></div>
+          <div class="bar-row"><span class="bar-lbl">DB2</span><div class="bar-bg"><div class="bar-fill" style="background:#7c3aed;width:13%;"></div></div><span class="bar-cnt">6</span></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">Platform Dağılımı</div>
+          <div class="bar-row"><span class="bar-lbl">JBoss</span><div class="bar-bg"><div class="bar-fill" style="background:#f97316;width:80%;"></div></div><span class="bar-cnt">36</span></div>
+          <div class="bar-row"><span class="bar-lbl">WebSphere</span><div class="bar-bg"><div class="bar-fill" style="background:#054ada;width:44%;"></div></div><span class="bar-cnt">20</span></div>
+          <div class="bar-row"><span class="bar-lbl">OpenShift</span><div class="bar-bg"><div class="bar-fill" style="background:#dc2626;width:31%;"></div></div><span class="bar-cnt">14</span></div>
+          <div class="bar-row"><span class="bar-lbl">LinuxOne</span><div class="bar-bg"><div class="bar-fill" style="background:#7c3aed;width:22%;"></div></div><span class="bar-cnt">10</span></div>
+          <div class="bar-row"><span class="bar-lbl">Wyden</span><div class="bar-bg"><div class="bar-fill" style="background:#0d9488;width:22%;"></div></div><span class="bar-cnt">10</span></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+        <div class="metric-sm"><div class="metric-lbl">Avg Query</div><div class="metric-val">9ms</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Slow &gt;100ms</div><div class="metric-val" style="color:var(--yellow);">3</div></div>
+        <div class="metric-sm"><div class="metric-lbl">Conn Fail</div><div class="metric-val" style="color:var(--green);">0</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Donut Chart
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{ data: [128, 14, 6], backgroundColor: ['#22c55e','#facc15','#ef4444'], borderWidth: 0, hoverOffset: 3, borderRadius: 2 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '70%',
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0d1018', borderColor: '#1e2535', borderWidth: 1, titleColor: '#7a8099', bodyColor: '#c8cdd8', callbacks: { label: function(ctx) { return ' ' + ctx.parsed; } } } },
+    animation: { animateRotate: true, duration: 900 }
+  }
+});
+
+// Line Chart
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: ['10:00','10:05','10:10','10:15','10:20','10:25','10:30'],
+    datasets: [{ data: [210, 195, 240, 215, 255, 230, 247], borderColor: '#22c55e', borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: '#22c55e', fill: true, backgroundColor: 'rgba(34,197,94,0.06)', tension: 0.4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0d1018', borderColor: '#1e2535', borderWidth: 1, titleColor: '#7a8099', bodyColor: '#c8cdd8', callbacks: { label: function(ctx) { return ' ' + ctx.parsed.y + 'ms'; } } } },
+    scales: {
+      x: { ticks: { color: '#4a5068', font: { size: 9, family: "'JetBrains Mono'" } }, grid: { color: '#161b28' } },
+      y: { ticks: { color: '#4a5068', font: { size: 9, family: "'JetBrains Mono'" }, callback: v => v + 'ms' }, grid: { color: '#161b28' }, min: 150, max: 300 }
+    }
+  }
+});
+
+// Uptime bar
+(function() {
+  var bar = document.getElementById('uptimeBar');
+  if (!bar) return;
+  for (var i = 0; i < 48; i++) {
+    var seg = document.createElement('div');
+    seg.className = 'uptime-seg';
+    var r = Math.random();
+    seg.style.background = r > 0.95 ? '#facc15' : r > 0.99 ? '#ef4444' : '#22c55e';
+    seg.style.opacity = r > 0.95 ? '0.9' : '0.6';
+    bar.appendChild(seg);
+  }
+})();
+
+// OpenShift Nested Donut — outer: namespace, inner: pod status
+new Chart(document.getElementById('osNestedDonut'), {
+  type: 'doughnut',
+  data: {
+    datasets: [
+      {
+        // Outer ring — namespace distribution
+        label: 'Namespace',
+        data: [72, 48, 38, 18, 12],
+        backgroundColor: ['#dc2626','#f97316','#4d82d6','#6b7280','#7c3aed'],
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        hoverOffset: 4,
+        borderRadius: 2,
+        weight: 1.6
+      },
+      {
+        // Inner ring — pod status
+        label: 'Pod Status',
+        data: [184, 3, 1],
+        backgroundColor: ['rgba(34,197,94,0.75)','rgba(250,204,21,0.75)','rgba(239,68,68,0.75)'],
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        hoverOffset: 4,
+        borderRadius: 2,
+        weight: 1
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '48%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1a1d26',
+        borderColor: '#dde0e8',
+        borderWidth: 1,
+        titleColor: '#9099b0',
+        bodyColor: '#e2e4ec',
+        padding: 8,
+        callbacks: {
+          title: function(items) {
+            var nsLabels = ['production','staging','dev','monitoring','infra'];
+            var podLabels = ['Running','Pending','Failed'];
+            var di = items[0].datasetIndex;
+            var i = items[0].dataIndex;
+            return di === 0 ? nsLabels[i] : podLabels[i];
+          },
+          label: function(ctx) {
+            return '  ' + ctx.parsed + (ctx.datasetIndex === 0 ? ' pods' : ' pods');
+          }
+        }
+      }
+    },
+    animation: { animateRotate: true, duration: 900 }
+  }
+});
+
+// DataSource pool meter
+(function() {
+  var meter = document.getElementById('poolMeter');
+  if (!meter) return;
+  var total = 90;
+  var active = 74;
+  var warn = 13;
+  var crit = 3;
+  var ok = active - warn - crit;
+  for (var i = 0; i < total; i++) {
+    var seg = document.createElement('div');
+    seg.className = 'pool-seg';
+    if (i < ok) seg.style.background = '#22c55e';
+    else if (i < ok + warn) seg.style.background = '#facc15';
+    else if (i < active) seg.style.background = '#ef4444';
+    else seg.style.background = 'var(--bg4)';
+    meter.appendChild(seg);
+  }
+})();
+</script>
+</body>
+</html>

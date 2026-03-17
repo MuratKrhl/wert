@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Enterprise DevOps Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#eef0f4;--bg2:#ffffff;--bg3:#f5f6f9;--bg4:#e8eaf0;
+  --border:#dde0e8;--border2:#c8ccd6;
+  --text:#1a1d26;--text2:#5a6078;--text3:#9099b0;
+  --green:#16a34a;--gbg:#f0fdf4;--gb:#bbf7d0;
+  --yellow:#b45309;--ybg:#fffbeb;--yb:#fde68a;
+  --red:#dc2626;--rbg:#fef2f2;--rb:#fecaca;
+  --orange:#ea580c;--obg:#fff7ed;
+  --blue:#2563eb;--bbg:#eff6ff;--bbl:#bfdbfe;
+  --purple:#7c3aed;--pbg:#f5f3ff;--pbl:#ddd6fe;
+  --teal:#0d9488;--tbg:#f0fdfa;--tbl:#99f6e4;
+  --mono:'JetBrains Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:10px;--sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.4;min-height:100vh;}
+.page{max-width:1600px;margin:0 auto;padding:14px 16px;}
+.sec{margin-bottom:14px;}
+.sec-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.15em;color:var(--text3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.sec-lbl::before{content:'';width:3px;height:3px;background:var(--text3);border-radius:50%;}
+.card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);}
+.p14{padding:14px;}
+.p12{padding:11px 12px;}
+.div{height:.5px;background:var(--border);margin:8px 0;}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:10px 16px;margin-bottom:14px;box-shadow:var(--sh);}
+.hdr-l{display:flex;align-items:center;gap:10px;}
+.hdot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 2s infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.htitle{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.04em;}
+.hsub{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.hdr-r{display:flex;align-items:center;gap:10px;}
+.clock{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text2);letter-spacing:.06em;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
+.bg{background:var(--gbg);color:var(--green);border:.5px solid var(--gb);}
+.br{background:var(--rbg);color:var(--red);border:.5px solid var(--rb);}
+.by{background:var(--ybg);color:var(--yellow);border:.5px solid var(--yb);}
+.bb{background:var(--bbg);color:var(--blue);border:.5px solid var(--bbl);}
+.bp{background:var(--pbg);color:var(--purple);border:.5px solid var(--pbl);}
+.bt{background:var(--tbg);color:var(--teal);border:.5px solid var(--tbl);}
+.bgr{background:var(--bg4);color:var(--text2);border:.5px solid var(--border2);}
+
+/* ENV PULSE */
+.env6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.ecard{background:var(--bg2);border:.5px solid var(--border);border-radius:8px;padding:10px 13px;box-shadow:var(--sh);}
+.elbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:4px;}
+.eval{font-size:24px;font-weight:700;font-family:var(--mono);line-height:1;}
+.esub{font-size:10px;color:var(--text2);margin-top:3px;}
+
+/* PLATFORM HEALTH */
+.ph3{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px;}
+.ph-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ph-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ph-title{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.03em;}
+.m2{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.met{background:var(--bg3);border-radius:6px;padding:6px 9px;}
+.ml{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:3px;}
+.mv{font-size:13px;font-weight:600;font-family:var(--mono);}
+.leg{display:flex;flex-wrap:wrap;gap:7px;margin:5px 0 7px;}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);}
+.ld{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.al-rows{display:flex;flex-direction:column;gap:5px;}
+.al-row{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border-radius:6px;}
+.al-l{font-size:11px;font-weight:500;font-family:var(--mono);}
+.al-n{font-size:16px;font-weight:700;font-family:var(--mono);}
+.al-bg{height:2px;border-radius:2px;background:rgba(0,0,0,.08);margin-top:2px;}
+.al-b{height:2px;border-radius:2px;}
+.ubar{display:flex;gap:1px;margin-top:4px;}
+.useg{height:5px;flex:1;border-radius:1px;}
+
+/* APP SERVER CARDS */
+.sg4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sg5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px;}
+.sc{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--r);padding:11px 12px;box-shadow:var(--sh);}
+.sh{display:flex;align-items:center;gap:6px;margin-bottom:9px;padding-bottom:8px;border-bottom:.5px solid var(--border);}
+.si{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;font-family:var(--mono);flex-shrink:0;}
+.sn{font-family:var(--mono);font-size:11px;font-weight:600;}
+.ss{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.srows{display:flex;flex-direction:column;gap:4px;}
+.srow{display:flex;justify-content:space-between;align-items:center;}
+.sl{font-size:11px;color:var(--text2);}
+.sv{font-family:var(--mono);font-size:11px;font-weight:500;}
+.sw{color:var(--yellow);}.sc2{color:var(--red);}.sok{color:var(--green);}
+.sbl{color:var(--blue);}.stl{color:var(--teal);}.spu{color:var(--purple);}
+.strip-os{border-left:3px solid #dc2626!important;}
+.strip-ws{border-left:3px solid #054ada!important;}
+.strip-wy{border-left:3px solid #0d9488!important;}
+.strip-l1{border-left:3px solid #7c3aed!important;}
+.strip-ds{border-left:3px solid #f97316!important;}
+
+/* OS NESTED DONUT */
+.osdw{position:relative;height:140px;}
+.osdc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
+
+/* POOL METER */
+.pmeter{display:flex;gap:1px;height:6px;border-radius:3px;overflow:hidden;margin:4px 0 3px;}
+.pseg{flex:1;}
+
+/* INVENTORY ROW 1 */
+.inv3{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:10px;}
+.inv-title{font-family:var(--mono);font-size:11px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.br2{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.bl{font-size:11px;color:var(--text2);width:76px;flex-shrink:0;}
+.bbg{flex:1;height:4px;background:var(--bg4);border-radius:2px;}
+.bfill{height:4px;border-radius:2px;}
+.bc{font-family:var(--mono);font-size:11px;color:var(--text);width:24px;text-align:right;flex-shrink:0;}
+.cgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:8px;}
+.cbox{border-radius:7px;padding:8px;text-align:center;}
+.cl{font-size:9px;color:var(--text2);font-family:var(--mono);margin-bottom:2px;}
+.cv{font-size:18px;font-weight:700;font-family:var(--mono);}
+.db-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:.5px solid var(--border);}
+.db-row:last-child{border-bottom:none;}
+.db-name{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;}
+.db-dot{width:6px;height:6px;border-radius:50%;}
+.db-cnt{font-family:var(--mono);font-size:12px;font-weight:600;}
+.migr-pct{font-size:36px;font-weight:700;font-family:var(--mono);color:var(--green);margin:6px 0;}
+.migr-sub{font-size:11px;color:var(--text2);margin-bottom:10px;}
+.migr-rows{display:flex;flex-direction:column;gap:5px;}
+.migr-row{display:flex;align-items:center;gap:6px;}
+.migr-lbl{font-size:11px;color:var(--text2);flex:1;}
+.migr-bg{width:80px;height:4px;background:var(--bg4);border-radius:2px;}
+.migr-fill{height:4px;border-radius:2px;}
+.migr-cnt{font-family:var(--mono);font-size:11px;width:16px;text-align:right;}
+
+/* INVENTORY ROW 2 */
+.inv2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.sstat{background:var(--bg3);border-radius:8px;padding:10px;text-align:center;}
+.sstat-l{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:3px;}
+.sstat-v{font-size:22px;font-weight:700;font-family:var(--mono);}
+.sstat-s{font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:1px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.col-title{font-size:10px;color:var(--text3);font-family:var(--mono);letter-spacing:.06em;margin-bottom:6px;}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.mets{background:var(--bg3);border-radius:6px;padding:7px 9px;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdot"></div>
+    <div>
+      <span class="htitle">ENTERPRISE DEVOPS DASHBOARD</span>
+      <span class="hsub"> · 600+ HOSTS</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <span class="badge bg">● TÜM SİSTEMLER NORMAL</span>
+    <span class="clock" id="liveClock">--:--:--</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ENVIRONMENT PULSE ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-lbl"><span style="display:inline-block;width:6px;height:6px;background:var(--green);border-radius:50%;animation:blink 2s infinite"></span>Environment Pulse</div>
+  <div class="env6">
+    <div class="ecard"><div class="elbl">Toplam Sunucu</div><div class="eval">148</div><div class="esub">97 Linux · 51 AIX</div></div>
+    <div class="ecard"><div class="elbl">Toplam Uygulama</div><div class="eval">137</div><div class="esub">8 platform · 3 kategori</div></div>
+    <div class="ecard"><div class="elbl">Erişilebilirlik</div><div class="eval" style="color:var(--green)">99.97%</div><div class="badge bg" style="margin-top:4px">▲ Stabil</div></div>
+    <div class="ecard"><div class="elbl">Request / SN</div><div class="eval">4.572</div><div class="esub">p95 247ms</div></div>
+    <div class="ecard"><div class="elbl">Aktif Problem</div><div class="eval" style="color:var(--green)">0</div><div class="badge bg" style="margin-top:4px">Auto-healed: 8</div></div>
+    <div class="ecard"><div class="elbl">Hata Oranı</div><div class="eval" style="color:var(--text2)">0.56%</div><div class="badge bgr" style="margin-top:4px">▲ Normal aralık</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ GLOBAL PLATFORM HEALTH ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-lbl">Global Platform Health</div>
+  <div class="ph3">
+
+    <!-- Infrastructure Health -->
+    <div class="card p14">
+      <div class="ph-head">
+        <div class="ph-icon" style="background:var(--bbg)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><rect x="1" y="10" width="14" height="4" rx="1" stroke="#2563eb" stroke-width="1.2"/><circle cx="12.5" cy="4" r="1" fill="#2563eb"/><circle cx="12.5" cy="12" r="1" fill="#2563eb"/></svg></div>
+        <span class="ph-title">Infrastructure Health</span>
+        <span class="badge bg" style="margin-left:auto">Sağlıklı</span>
+      </div>
+      <div style="position:relative;height:130px">
+        <canvas id="infraDonut"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+          <div style="font-size:22px;font-weight:700;font-family:var(--mono)">148</div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">sunucu</div>
+        </div>
+      </div>
+      <div class="leg"><div class="li"><div class="ld" style="background:#22c55e"></div>Sağlıklı 128 · 87%</div><div class="li"><div class="ld" style="background:#facc15"></div>Uyarı 14 · 9%</div><div class="li"><div class="ld" style="background:#ef4444"></div>Kritik 6 · 4%</div></div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">CPU Kullanımı</div><div class="mv" style="color:#4d82d6">38%</div></div>
+        <div class="met"><div class="ml">Bellek</div><div class="mv" style="color:var(--yellow)">54%</div></div>
+        <div class="met"><div class="ml">Disk</div><div class="mv" style="color:var(--orange)">62%</div></div>
+        <div class="met"><div class="ml">Network</div><div class="mv">29%</div></div>
+      </div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">Linux</div><div class="mv">97</div></div>
+        <div class="met"><div class="ml">AIX</div><div class="mv">51</div></div>
+        <div class="met"><div class="ml">Küme</div><div class="mv">12</div></div>
+        <div class="met"><div class="ml">Net.Err</div><div class="mv" style="color:var(--green)">0</div></div>
+      </div>
+    </div>
+
+    <!-- Application Health -->
+    <div class="card p14">
+      <div class="ph-head">
+        <div class="ph-icon" style="background:var(--gbg)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><polyline points="1,12 4,7 7,9 10,5 13,8 15,4" stroke="#22c55e" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="ph-title">Uygulama Sağlığı</span>
+        <span class="badge bg" style="margin-left:auto">99.97%</span>
+      </div>
+      <div style="height:130px"><canvas id="appLine"></canvas></div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">Erişilebilirlik</div><div class="mv" style="color:var(--green)">99.97%</div></div>
+        <div class="met"><div class="ml">Hata Oranı</div><div class="mv" style="color:var(--yellow)">0.56%</div></div>
+        <div class="met"><div class="ml">Apdex</div><div class="mv" style="color:var(--green)">0.97</div></div>
+        <div class="met"><div class="ml">P95 / P99</div><div class="mv">247ms</div></div>
+      </div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">TPS</div><div class="mv" style="color:#4d82d6">4.572</div></div>
+        <div class="met"><div class="ml">Aktif Req</div><div class="mv">967</div></div>
+        <div class="met"><div class="ml">P50</div><div class="mv">142ms</div></div>
+        <div class="met"><div class="ml">P95</div><div class="mv">247ms</div></div>
+      </div>
+    </div>
+
+    <!-- Alert Summary -->
+    <div class="card p14">
+      <div class="ph-head">
+        <div class="ph-icon" style="background:var(--rbg)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2L14 13H2L8 2Z" stroke="#ef4444" stroke-width="1.2" fill="none" stroke-linejoin="round"/><line x1="8" y1="6.5" x2="8" y2="9.5" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".6" fill="#ef4444"/></svg></div>
+        <span class="ph-title">Alert Özeti</span>
+        <span class="badge bg" style="margin-left:auto">Stabil</span>
+      </div>
+      <div class="al-rows">
+        <div class="al-row" style="background:var(--rbg)"><div style="flex:1"><div class="al-l" style="color:var(--red)">Kritik</div><div class="al-bg"><div class="al-b" style="background:var(--red);width:0%"></div></div></div><div style="text-align:right;margin-left:10px"><div class="al-n" style="color:var(--red)">0</div><div style="font-size:9px;color:var(--text3)">aktif yok</div></div></div>
+        <div class="al-row" style="background:var(--obg)"><div style="flex:1"><div class="al-l" style="color:var(--orange)">Major</div><div class="al-bg"><div class="al-b" style="background:var(--orange);width:0%"></div></div></div><div style="text-align:right;margin-left:10px"><div class="al-n" style="color:var(--orange)">0</div><div style="font-size:9px;color:var(--text3)">aktif yok</div></div></div>
+        <div class="al-row" style="background:var(--ybg)"><div style="flex:1"><div class="al-l" style="color:var(--yellow)">Uyarı</div><div class="al-bg"><div class="al-b" style="background:var(--yellow);width:0%"></div></div></div><div style="text-align:right;margin-left:10px"><div class="al-n" style="color:var(--yellow)">0</div><div style="font-size:9px;color:var(--text3)">aktif yok</div></div></div>
+        <div class="al-row" style="background:var(--gbg)"><div style="flex:1"><div class="al-l" style="color:var(--green)">Auto-healed</div><div class="al-bg"><div class="al-b" style="background:var(--green);width:100%"></div></div></div><div style="text-align:right;margin-left:10px"><div class="al-n" style="color:var(--green)">8</div><div style="font-size:9px;color:var(--text3)">son 1 saat</div></div></div>
+      </div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">Sağlıklı SVC</div><div class="mv" style="color:var(--green)">41</div></div>
+        <div class="met"><div class="ml">Uyarı SVC</div><div class="mv" style="color:var(--yellow)">0</div></div>
+        <div class="met"><div class="ml">Kritik SVC</div><div class="mv" style="color:var(--red)">0</div></div>
+        <div class="met"><div class="ml">Küme</div><div class="mv">12</div></div>
+      </div>
+      <div style="margin-top:8px">
+        <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">SON 24 SAAT UPTIME</div>
+        <div class="ubar" id="uptimeBar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ APPLICATION SERVERS ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-lbl">Uygulama Sunucuları · İş Platformları</div>
+
+  <!-- Row 1: JBoss · Nginx · EVAM · Provenir -->
+  <div class="sg4">
+    <div class="sc"><div class="sh"><div class="si" style="background:#fff7ed;color:#ea580c">JB</div><div><div class="sn">JBoss</div><div class="ss">Middleware</div></div><div class="badge by" style="margin-left:auto">73%</div></div><div class="srows"><div class="srow"><span class="sl">JVM Heap</span><span class="sv sw">73%</span></div><div class="srow"><span class="sl">Thread Count</span><span class="sv">312</span></div><div class="srow"><span class="sl">Busy Threads</span><span class="sv sw">11%</span></div><div class="srow"><span class="sl">Request TPS</span><span class="sv">1.868</span></div><div class="srow"><span class="sl">Active Conns</span><span class="sv">0.88%</span></div><div class="srow"><span class="sl">Deployments</span><span class="sv sok">24</span></div></div></div>
+    <div class="sc"><div class="sh"><div class="si" style="background:var(--gbg);color:var(--green)">NX</div><div><div class="sn">Nginx</div><div class="ss">Middleware</div></div><div class="badge bg" style="margin-left:auto">OK</div></div><div class="srows"><div class="srow"><span class="sl">Req / sn</span><span class="sv">1.900</span></div><div class="srow"><span class="sl">Aktif Bağl.</span><span class="sv">3.400</span></div><div class="srow"><span class="sl">1xx Oranı</span><span class="sv">0.12%</span></div><div class="srow"><span class="sl">4xx Oranı</span><span class="sv sw">0.42%</span></div><div class="srow"><span class="sl">Upstream H</span><span class="sv">38ms</span></div><div class="srow"><span class="sl">Worker Proc</span><span class="sv">8</span></div><div class="srow"><span class="sl">Upstream Fail</span><span class="sv sok">3</span></div></div></div>
+    <div class="sc"><div class="sh"><div class="si" style="background:var(--bbg);color:var(--blue)">EV</div><div><div class="sn">EVAM</div><div class="ss">Fraud</div></div><div class="badge br" style="margin-left:auto">Kritik</div></div><div class="srows"><div class="srow"><span class="sl">TPS</span><span class="sv">1.240</span></div><div class="srow"><span class="sl">Kuyruk Lat.</span><span class="sv sc2">0.83%</span></div><div class="srow"><span class="sl">Fraud Hesp</span><span class="sv sc2">0.83%</span></div><div class="srow"><span class="sl">Engine Err</span><span class="sv">0</span></div><div class="srow"><span class="sl">Queue Len.</span><span class="sv">4</span></div><div class="srow"><span class="sl">Queue Wait</span><span class="sv sw">2ms</span></div><div class="srow"><span class="sl">Timeout</span><span class="sv sok">0%</span></div></div></div>
+    <div class="sc"><div class="sh"><div class="si" style="background:var(--bbg);color:var(--blue)">PC</div><div><div class="sn">Provenir / PowerCurve</div><div class="ss">Credit</div></div><div class="badge bb" style="margin-left:auto">OK</div></div><div class="srows"><div class="srow"><span class="sl">Karar Hız</span><span class="sv sok">880</span></div><div class="srow"><span class="sl">Karar Lat.</span><span class="sv">12ms</span></div><div class="srow"><span class="sl">Bağlantı</span><span class="sv">18ms</span></div><div class="srow"><span class="sl">API Hit</span><span class="sv">24ms</span></div><div class="srow"><span class="sl">API Hata</span><span class="sv sok">0</span></div><div class="srow"><span class="sl">Scoring List</span><span class="sv">—</span></div><div class="srow"><span class="sl">Rule List</span><span class="sv">—</span></div></div></div>
+  </div>
+
+  <!-- Row 2: OpenShift · WebSphere · Wyden · LinuxOne · DataSource -->
+  <div class="sg5">
+    <!-- OpenShift -->
+    <div class="sc strip-os">
+      <div class="sh"><div class="si" style="background:var(--rbg);color:var(--red)">OS</div><div><div class="sn">OpenShift</div><div class="ss">Container</div></div><div class="badge bg" style="margin-left:auto">OK</div></div>
+      <div class="osdw"><canvas id="osND"></canvas><div class="osdc"><div style="font-size:17px;font-weight:700;font-family:var(--mono);line-height:1">188</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:1px">pods</div></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px"><div class="li" style="font-size:9px"><div class="ld" style="background:#dc2626"></div>prod·72</div><div class="li" style="font-size:9px"><div class="ld" style="background:#f97316"></div>stg·48</div><div class="li" style="font-size:9px"><div class="ld" style="background:#4d82d6"></div>dev·38</div><div class="li" style="font-size:9px"><div class="ld" style="background:#7c3aed"></div>infra·30</div></div>
+      <div style="display:flex;gap:6px;margin-bottom:5px"><div class="li" style="font-size:9px"><div class="ld" style="background:#22c55e"></div>Run·184</div><div class="li" style="font-size:9px"><div class="ld" style="background:#facc15"></div>Pend·3</div><div class="li" style="font-size:9px"><div class="ld" style="background:#ef4444"></div>Fail·1</div></div>
+      <div class="div" style="margin:4px 0"></div>
+      <div class="srows"><div class="srow"><span class="sl">Pod Restarts</span><span class="sv sw">7</span></div><div class="srow"><span class="sl">Namespaces</span><span class="sv">16</span></div><div class="srow"><span class="sl">CPU Request</span><span class="sv">61%</span></div><div class="srow"><span class="sl">Mem Request</span><span class="sv sw">78%</span></div><div class="srow"><span class="sl">Node Count</span><span class="sv sbl">12</span></div></div>
+    </div>
+    <!-- WebSphere -->
+    <div class="sc strip-ws"><div class="sh"><div class="si" style="background:var(--bbg);color:#054ada">WS</div><div><div class="sn">WebSphere</div><div class="ss">Middleware</div></div><div class="badge by" style="margin-left:auto">Uyarı</div></div><div class="srows"><div class="srow"><span class="sl">JVM Heap</span><span class="sv sw">68%</span></div><div class="srow"><span class="sl">Thread Pool</span><span class="sv sw">82 / 100</span></div><div class="srow"><span class="sl">Active Sess</span><span class="sv">1.204</span></div><div class="srow"><span class="sl">Request TPS</span><span class="sv">640</span></div><div class="srow"><span class="sl">Resp Time</span><span class="sv">56ms</span></div><div class="srow"><span class="sl">Deployed App</span><span class="sv sok">16</span></div><div class="srow"><span class="sl">GC Pause</span><span class="sv sw">34ms</span></div></div></div>
+    <!-- Wyden -->
+    <div class="sc strip-wy"><div class="sh"><div class="si" style="background:var(--tbg);color:var(--teal)">WY</div><div><div class="sn">Wyden</div><div class="ss">Core Banking</div></div><div class="badge bt" style="margin-left:auto">OK</div></div><div class="srows"><div class="srow"><span class="sl">TPS</span><span class="sv stl">2.310</span></div><div class="srow"><span class="sl">Latency P95</span><span class="sv">88ms</span></div><div class="srow"><span class="sl">Active Sess</span><span class="sv">3.740</span></div><div class="srow"><span class="sl">Hata Oranı</span><span class="sv sok">0.03%</span></div><div class="srow"><span class="sl">Queue Depth</span><span class="sv">12</span></div><div class="srow"><span class="sl">Batch Jobs</span><span class="sv stl">4 aktif</span></div><div class="srow"><span class="sl">Uptime</span><span class="sv sok">99.99%</span></div></div></div>
+    <!-- LinuxOne -->
+    <div class="sc strip-l1"><div class="sh"><div class="si" style="background:var(--pbg);color:var(--purple)">L1</div><div><div class="sn">LinuxOne</div><div class="ss">Mainframe</div></div><div class="badge bg" style="margin-left:auto">OK</div></div><div class="srows"><div class="srow"><span class="sl">CPU LPAR</span><span class="sv">42%</span></div><div class="srow"><span class="sl">Mem Util</span><span class="sv sw">71%</span></div><div class="srow"><span class="sl">I/O Wait</span><span class="sv sok">1.2%</span></div><div class="srow"><span class="sl">LPAR Aktif</span><span class="sv spu">8 / 8</span></div><div class="srow"><span class="sl">MIPS Used</span><span class="sv">3.840</span></div><div class="srow"><span class="sl">Workload</span><span class="sv">OLTP+Batch</span></div><div class="srow"><span class="sl">Net Thrghpt</span><span class="sv">14 Gbps</span></div></div></div>
+    <!-- DataSource -->
+    <div class="sc strip-ds">
+      <div class="sh"><div class="si" style="background:var(--obg);color:var(--orange)">DS</div><div><div class="sn">DataSource</div><div class="ss">Conn. Pool</div></div><div class="badge bg" style="margin-left:auto">OK</div></div>
+      <div style="margin-bottom:6px"><div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:3px">POOL KULLANIMI</div><div class="pmeter" id="poolMeter"></div><div style="font-size:9px;color:var(--text2);font-family:var(--mono)">74 / 90 aktif bağlantı</div></div>
+      <div class="srows"><div class="srow"><span class="sl">Aktif Conn</span><span class="sv sw">74 / 90</span></div><div class="srow"><span class="sl">Avg Query</span><span class="sv">9ms</span></div><div class="srow"><span class="sl">Slow Query</span><span class="sv sw">3</span></div><div class="srow"><span class="sl">Conn Fail</span><span class="sv sok">0</span></div><div class="srow"><span class="sl">Wait Time</span><span class="sv">0.4ms</span></div><div class="srow"><span class="sl">Datasource</span><span class="sv">90 UI</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ENVANTER ÖZETI ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-lbl">Envanter Özeti</div>
+
+  <!-- Row 1: App Inventory · Certificate Inventory · JBoss Migration -->
+  <div class="inv3">
+
+    <!-- App Inventory -->
+    <div class="card p14">
+      <div class="inv-title">Uygulama Envanteri <span class="badge bb">137</span></div>
+      <div class="br2"><span class="bl">JBoss</span><div class="bbg"><div class="bfill" style="background:#f97316;width:100%"></div></div><span class="bc">34</span></div>
+      <div class="br2"><span class="bl">Nginx</span><div class="bbg"><div class="bfill" style="background:#4d82d6;width:70%"></div></div><span class="bc">24</span></div>
+      <div class="br2"><span class="bl">WebSphere</span><div class="bbg"><div class="bfill" style="background:#054ada;width:47%"></div></div><span class="bc">16</span></div>
+      <div class="br2"><span class="bl">OpenShift</span><div class="bbg"><div class="bfill" style="background:#dc2626;width:47%"></div></div><span class="bc">16</span></div>
+      <div class="br2"><span class="bl">LinuxOne</span><div class="bbg"><div class="bfill" style="background:#7c3aed;width:24%"></div></div><span class="bc">8</span></div>
+      <div class="br2"><span class="bl">Wyden</span><div class="bbg"><div class="bfill" style="background:#0d9488;width:18%"></div></div><span class="bc">6</span></div>
+      <div class="br2"><span class="bl">Diğer</span><div class="bbg"><div class="bfill" style="background:#6b7280;width:97%"></div></div><span class="bc">33</span></div>
+    </div>
+
+    <!-- Certificate Inventory -->
+    <div class="card p14">
+      <div class="inv-title">Sertifika Envanteri <span class="badge bgr">293 toplam</span></div>
+      <div class="cgrid">
+        <div class="cbox" style="background:#0a1f10"><div class="cl">Geçerli</div><div class="cv" style="color:#22c55e">178</div><div style="font-size:9px;color:#1a5c30;font-family:var(--mono)">30g+</div></div>
+        <div class="cbox" style="background:#1a1800"><div class="cl">Dolmuş</div><div class="cv" style="color:#facc15">24</div></div>
+        <div class="cbox" style="background:#1a1800"><div class="cl">Oracle</div><div class="cv" style="color:#facc15">43</div></div>
+        <div class="cbox" style="background:#0a1f10"><div class="cl">Spring</div><div class="cv" style="color:#22c55e">22</div></div>
+        <div class="cbox" style="background:#0a1428"><div class="cl">Cloud</div><div class="cv" style="color:#4d82d6">14</div></div>
+      </div>
+      <div class="div"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px">Datasource (90 UI)</div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#f97316"></div>Oracle DB</div><div class="db-cnt" style="color:#f97316">42</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#336791"></div>PostgreSQL</div><div class="db-cnt" style="color:#4d82d6">24</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#cc2927"></div>MSSQL</div><div class="db-cnt" style="color:var(--red)">8</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#0d9488"></div>Sybase</div><div class="db-cnt" style="color:var(--teal)">10</div></div>
+      <div class="db-row"><div class="db-name"><div class="db-dot" style="background:#7c3aed"></div>DB2</div><div class="db-cnt" style="color:var(--purple)">6</div></div>
+    </div>
+
+    <!-- JBoss Migration -->
+    <div class="card p14">
+      <div class="inv-title">JBoss 8 Migration <span class="badge bgr">34 instance</span></div>
+      <div class="migr-pct">62%</div>
+      <div class="migr-sub">migration tamamlandı</div>
+      <div class="div"></div>
+      <div class="migr-rows">
+        <div class="migr-row"><span class="migr-lbl">Tamamlandı</span><div class="migr-bg"><div class="migr-fill" style="background:#22c55e;width:62%"></div></div><span class="migr-cnt" style="color:var(--green)">13</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q1 Planlı</span><div class="migr-bg"><div class="migr-fill" style="background:#4d82d6;width:43%"></div></div><span class="migr-cnt" style="color:#4d82d6">9</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q2 Planlı</span><div class="migr-bg"><div class="migr-fill" style="background:#a855f7;width:29%"></div></div><span class="migr-cnt" style="color:#a855f7">6</span></div>
+        <div class="migr-row"><span class="migr-lbl">Q3 Planlı</span><div class="migr-bg"><div class="migr-fill" style="background:#f97316;width:14%"></div></div><span class="migr-cnt" style="color:#f97316">3</span></div>
+        <div class="migr-row"><span class="migr-lbl">Tamamlanmadı</span><div class="migr-bg"><div class="migr-fill" style="background:#ef4444;width:14%"></div></div><span class="migr-cnt" style="color:var(--red)">3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: OpenShift Cluster Inventory · DataSource Inventory -->
+  <div class="inv2">
+
+    <!-- OpenShift Cluster Inventory -->
+    <div class="card p14">
+      <div class="inv-title">OpenShift Cluster Envanteri <span class="badge br">16 uygulama</span></div>
+      <div class="stat-strip">
+        <div class="sstat"><div class="sstat-l">Cluster</div><div class="sstat-v" style="color:var(--red)">3</div><div class="sstat-s">aktif</div></div>
+        <div class="sstat"><div class="sstat-l">Nodes</div><div class="sstat-v">12</div><div class="sstat-s">worker</div></div>
+        <div class="sstat"><div class="sstat-l">Pods</div><div class="sstat-v" style="color:var(--green)">184</div><div class="sstat-s">/ 188</div></div>
+        <div class="sstat"><div class="sstat-l">Services</div><div class="sstat-v">47</div><div class="sstat-s">toplam</div></div>
+      </div>
+      <div class="div"></div>
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px">Namespace Dağılımı</div>
+      <div class="br2"><span class="bl">production</span><div class="bbg"><div class="bfill" style="background:#dc2626;width:100%"></div></div><span class="bc">6</span></div>
+      <div class="br2"><span class="bl">staging</span><div class="bbg"><div class="bfill" style="background:#f97316;width:67%"></div></div><span class="bc">4</span></div>
+      <div class="br2"><span class="bl">dev</span><div class="bbg"><div class="bfill" style="background:#4d82d6;width:50%"></div></div><span class="bc">3</span></div>
+      <div class="br2"><span class="bl">monitoring</span><div class="bbg"><div class="bfill" style="background:#6b7280;width:33%"></div></div><span class="bc">2</span></div>
+      <div class="br2"><span class="bl">infra</span><div class="bbg"><div class="bfill" style="background:#7c3aed;width:17%"></div></div><span class="bc">1</span></div>
+      <div class="div"></div>
+      <div class="m2">
+        <div class="met"><div class="ml">CPU ALLOC</div><div class="mv" style="color:var(--red)">61%</div></div>
+        <div class="met"><div class="ml">MEM ALLOC</div><div class="mv" style="color:var(--yellow)">78%</div></div>
+        <div class="met"><div class="ml">PV Count</div><div class="mv">28</div></div>
+        <div class="met"><div class="ml">Services</div><div class="mv">47</div></div>
+      </div>
+    </div>
+
+    <!-- DataSource Inventory -->
+    <div class="card p14">
+      <div class="inv-title">DataSource Envanteri <span class="badge bgr">90 UI</span></div>
+      <div class="stat-strip">
+        <div class="sstat"><div class="sstat-l">Toplam</div><div class="sstat-v">90</div><div class="sstat-s">kayıt</div></div>
+        <div class="sstat"><div class="sstat-l">Aktif</div><div class="sstat-v" style="color:var(--green)">74</div><div class="sstat-s">bağlı</div></div>
+        <div class="sstat"><div class="sstat-l">Uyarı</div><div class="sstat-v" style="color:var(--yellow)">13</div><div class="sstat-s">yakın dolu</div></div>
+        <div class="sstat"><div class="sstat-l">Kritik</div><div class="sstat-v" style="color:var(--red)">3</div><div class="sstat-s">dolu</div></div>
+      </div>
+      <div class="div"></div>
+      <div class="two-col">
+        <div>
+          <div class="col-title">DB TİPİ DAĞILIMI</div>
+          <div class="br2"><span class="bl">Oracle</span><div class="bbg"><div class="bfill" style="background:#f97316;width:100%"></div></div><span class="bc">42</span></div>
+          <div class="br2"><span class="bl">PostgreSQL</span><div class="bbg"><div class="bfill" style="background:#336791;width:57%"></div></div><span class="bc">24</span></div>
+          <div class="br2"><span class="bl">MSSQL</span><div class="bbg"><div class="bfill" style="background:#cc2927;width:19%"></div></div><span class="bc">8</span></div>
+          <div class="br2"><span class="bl">Sybase</span><div class="bbg"><div class="bfill" style="background:#0d9488;width:24%"></div></div><span class="bc">10</span></div>
+          <div class="br2"><span class="bl">DB2</span><div class="bbg"><div class="bfill" style="background:#7c3aed;width:14%"></div></div><span class="bc">6</span></div>
+        </div>
+        <div>
+          <div class="col-title">PLATFORM DAĞILIMI</div>
+          <div class="br2"><span class="bl">JBoss</span><div class="bbg"><div class="bfill" style="background:#f97316;width:100%"></div></div><span class="bc">36</span></div>
+          <div class="br2"><span class="bl">WebSphere</span><div class="bbg"><div class="bfill" style="background:#054ada;width:56%"></div></div><span class="bc">20</span></div>
+          <div class="br2"><span class="bl">OpenShift</span><div class="bbg"><div class="bfill" style="background:#dc2626;width:39%"></div></div><span class="bc">14</span></div>
+          <div class="br2"><span class="bl">LinuxOne</span><div class="bbg"><div class="bfill" style="background:#7c3aed;width:28%"></div></div><span class="bc">10</span></div>
+          <div class="br2"><span class="bl">Wyden</span><div class="bbg"><div class="bfill" style="background:#0d9488;width:28%"></div></div><span class="bc">10</span></div>
+        </div>
+      </div>
+      <div class="div"></div>
+      <div class="stats3">
+        <div class="mets"><div class="ml">Avg Query</div><div class="mv">9ms</div></div>
+        <div class="mets"><div class="ml">Slow &gt;100ms</div><div class="mv" style="color:var(--yellow)">3</div></div>
+        <div class="mets"><div class="ml">Conn Fail</div><div class="mv" style="color:var(--green)">0</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+// CLOCK
+function tick(){var n=new Date();document.getElementById('liveClock').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');}
+tick();setInterval(tick,1000);
+
+Chart.defaults.color='#9099b0';
+Chart.defaults.font.family="'JetBrains Mono'";
+
+// INFRA DONUT
+new Chart(document.getElementById('infraDonut'),{
+  type:'doughnut',
+  data:{datasets:[{data:[128,14,6],backgroundColor:['#22c55e','#facc15','#ef4444'],borderWidth:0,hoverOffset:3,borderRadius:2}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1d26',callbacks:{label:c=>' '+c.parsed}}},animation:{animateRotate:true,duration:800}}
+});
+
+// APP HEALTH LINE
+new Chart(document.getElementById('appLine'),{
+  type:'line',
+  data:{labels:['10:00','10:05','10:10','10:15','10:20','10:25','10:30'],datasets:[{data:[210,195,240,215,255,230,247],borderColor:'#22c55e',borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#22c55e',fill:true,backgroundColor:'rgba(34,197,94,.06)',tension:0.4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1d26',callbacks:{label:c=>' '+c.parsed.y+'ms'}}},scales:{x:{ticks:{font:{size:8}},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{font:{size:8},callback:v=>v+'ms'},grid:{color:'rgba(0,0,0,.04)'},min:150,max:300}}}
+});
+
+// OS NESTED DONUT
+new Chart(document.getElementById('osND'),{
+  type:'doughnut',
+  data:{datasets:[
+    {label:'Namespace',data:[72,48,38,30],backgroundColor:['#dc2626','#f97316','#4d82d6','#7c3aed'],borderWidth:2,borderColor:'#fff',hoverOffset:4,borderRadius:2,weight:1.6},
+    {label:'Pod Status',data:[184,3,1],backgroundColor:['rgba(34,197,94,.75)','rgba(250,204,21,.75)','rgba(239,68,68,.75)'],borderWidth:2,borderColor:'#fff',hoverOffset:4,borderRadius:2,weight:1}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'44%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1d26',borderColor:'#dde0e8',borderWidth:1,callbacks:{title:function(i){return i[0].datasetIndex===0?['production','staging','dev','infra'][i[0].dataIndex]:['Running','Pending','Failed'][i[0].dataIndex];},label:c=>'  '+c.parsed+' pods'}}},animation:{animateRotate:true,duration:900}}
+});
+
+// UPTIME BAR
+(function(){
+  var b=document.getElementById('uptimeBar');
+  for(var i=0;i<48;i++){var s=document.createElement('div');s.className='useg';var r=Math.random();s.style.background=r>.97?'#facc15':r>.995?'#ef4444':'#22c55e';s.style.opacity=r>.97?'0.9':'0.55';b.appendChild(s);}
+})();
+
+// POOL METER
+(function(){
+  var m=document.getElementById('poolMeter');
+  [[58,'#22c55e'],[13,'#facc15'],[3,'#ef4444'],[16,'var(--bg4)']].forEach(function(p){
+    for(var i=0;i<p[0];i++){var s=document.createElement('div');s.className='pseg';s.style.background=p[1];m.appendChild(s);}
+  });
+})();
+</script>
+</body>
+</html>
